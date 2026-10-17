@@ -175,8 +175,6 @@ class _DailyReport extends ConsumerWidget {
       data: (att) {
         final goalMin =
             scheduleAsync.valueOrNull?.requiredOdcMinutes ?? 480;
-        final breakLimitMin =
-            scheduleAsync.valueOrNull?.allowedBreakMinutes ?? 60;
 
         if (att == null) {
           return _EmptyState(
