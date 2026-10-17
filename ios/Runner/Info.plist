@@ -30,7 +30,7 @@
 	<key>MinimumOSVersion</key>
 	<string>13.0</string>
 
-	<!-- ── Interface orientations ────────────────────────────────────────── -->
+	<!-- ── Interface orientations (portrait-first) ───────────────────────── -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -49,28 +49,57 @@
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 
-	<!-- ── Notifications ─────────────────────────────────────────────────── -->
-	<!-- Required for flutter_local_notifications on iOS -->
+	<!-- ── Background modes ──────────────────────────────────────────────── -->
+	<!-- Required for: remote notifications, background fetch, background processing -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
 		<string>remote-notification</string>
+		<string>processing</string>
 	</array>
 
-	<!-- Local notifications: time-sensitive interruption support (iOS 15+) -->
-	<!-- Declare the entitlement key even without an explicit usage description;
-	     the actual Time Sensitive entitlement must be enabled in Xcode Signing. -->
+	<!-- ── Face ID / Touch ID (local_auth) ───────────────────────────────── -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>ODC Tracker AI uses Face ID to securely unlock the app and protect your attendance data.</string>
 
-	<!-- ── Firebase / Messaging ──────────────────────────────────────────── -->
-	<!-- Add your actual REVERSED_CLIENT_ID from GoogleService-Info.plist here -->
-	<!-- <key>CFBundleURLTypes</key> -->
-	<!-- <array>                                                               -->
-	<!--   <dict>                                                              -->
-	<!--     <key>CFBundleTypeRole</key><string>Editor</string>               -->
-	<!--     <key>CFBundleURLSchemes</key>                                     -->
-	<!--     <array><string>YOUR_REVERSED_CLIENT_ID</string></array>          -->
-	<!--   </dict>                                                             -->
-	<!-- </array>                                                              -->
+	<!-- ── Notifications ─────────────────────────────────────────────────── -->
+	<!-- Enables time-sensitive notifications (break reminders bypass Focus) -->
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>ODC Tracker AI sends break reminders and shift alerts to help you track your ODC hours.</string>
+
+	<!-- ── Camera & Photo Library (profile photo) ────────────────────────── -->
+	<key>NSCameraUsageDescription</key>
+	<string>ODC Tracker AI needs camera access to update your profile photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ODC Tracker AI needs photo library access to select a profile photo.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>ODC Tracker AI needs permission to save your profile photo.</string>
+
+	<!-- ── Siri Shortcuts / App Intents ──────────────────────────────────── -->
+	<!-- Enables deep-link URL scheme for Siri Shortcuts -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.odctracker.odcTrackerAi</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>odctracker</string>
+			</array>
+		</dict>
+		<!-- Uncomment and fill in after adding iOS app in Firebase Console:
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>YOUR_REVERSED_CLIENT_ID_FROM_GoogleService-Info.plist</string>
+			</array>
+		</dict>
+		-->
+	</array>
 
 	<!-- ── Performance ───────────────────────────────────────────────────── -->
 	<key>CADisableMinimumFrameDurationOnPhone</key>
@@ -78,14 +107,28 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 
-	<!-- ── Privacy usage descriptions ───────────────────────────────────── -->
-	<!-- iOS 14+ requires these keys; App Store review will reject the app    -->
-	<!-- without them if the corresponding hardware/permission is requested.  -->
-	<key>NSCameraUsageDescription</key>
-	<string>ODC Tracker AI needs camera access to update your profile photo.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>ODC Tracker AI needs photo library access to select a profile photo.</string>
-	<key>NSUserNotificationsUsageDescription</key>
-	<string>ODC Tracker AI sends break reminders and shift alerts to help you track your ODC hours.</string>
+	<!-- ── App Transport Security ────────────────────────────────────────── -->
+	<!-- Firebase requires network access -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>firebaseapp.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+
+	<!-- ── Handoff / Universal Links ─────────────────────────────────────── -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:odctracker.app</string>
+	</array>
 </dict>
 </plist>

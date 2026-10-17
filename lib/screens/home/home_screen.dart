@@ -1,16 +1,17 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/attendance_model.dart';
 import '../../notifications/notification_service.dart';
 import '../../providers/attendance_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/reminder_provider.dart';
 import '../../providers/schedule_provider.dart';
+import '../../services/ios_features_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/date_utils.dart';
+import '../../widgets/ios_widgets.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -458,28 +459,26 @@ class _ActionControlState extends ConsumerState<_ActionControl>
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
-    // Haptic feedback
+    // Advanced Apple Taptic Engine patterns
     switch (action) {
       case 'checkIn':
-        HapticFeedback.mediumImpact();
+        await IOSFeaturesService.successFeedback();
         break;
       case 'startBreak':
-        HapticFeedback.mediumImpact();
+        IOSFeaturesService.mediumImpact();
         break;
       case 'endBreak':
-        HapticFeedback.heavyImpact();
+        await IOSFeaturesService.successFeedback();
         break;
       case 'checkOut':
-        HapticFeedback.lightImpact();
+        await IOSFeaturesService.warningFeedback();
         break;
     }
 
     try {
       final svc = ref.read(firestoreServiceProvider);
       final notifSvc = NotificationService();
-      // Always pass the active schedule so goals/limits are schedule-aware
-      final schedule =
-          ref.read(activeScheduleProvider).valueOrNull;
+      final schedule = ref.read(activeScheduleProvider).valueOrNull;
       switch (action) {
         case 'checkIn':
           await svc.checkIn(widget.userId, schedule: schedule);
@@ -497,7 +496,6 @@ class _ActionControlState extends ConsumerState<_ActionControl>
         case 'endBreak':
           await svc.endBreak(widget.userId, schedule: schedule);
           notifSvc.stopBreakReminders();
-          HapticFeedback.heavyImpact();
           _showSnack('Welcome back! 💪', AppColors.accent);
           break;
         case 'checkOut':
@@ -509,6 +507,7 @@ class _ActionControlState extends ConsumerState<_ActionControl>
           break;
       }
     } catch (e) {
+      await IOSFeaturesService.errorFeedback();
       _showSnack(
           e.toString().replaceAll('Exception: ', ''), AppColors.danger);
     } finally {
@@ -632,22 +631,13 @@ class _ActionControlState extends ConsumerState<_ActionControl>
   }
 
   Future<void> _confirmCheckOut() async {
-    final confirm = await showDialog<bool>(
+    final confirm = await showIOSAlert(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('End Shift'),
-        content: const Text('Are you sure you want to end your shift?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text('End Shift',
-                  style: TextStyle(
-                      color: AppColors.danger, fontWeight: FontWeight.w600))),
-        ],
-      ),
+      title: 'End Shift',
+      message: 'Are you sure you want to end your shift for today?',
+      confirmText: 'End Shift',
+      cancelText: 'Cancel',
+      isDestructive: true,
     );
     if (confirm == true) _act('checkOut');
   }
@@ -1152,13 +1142,14 @@ class _SkeletonTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 120,
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+    return Column(
+      children: [
+        ShimmerCard(height: 52, borderRadius: AppRadius.lg),
+        const SizedBox(height: 8),
+        ShimmerCard(height: 52, borderRadius: AppRadius.lg),
+        const SizedBox(height: 8),
+        ShimmerCard(height: 52, borderRadius: AppRadius.lg),
+      ],
     );
   }
 }

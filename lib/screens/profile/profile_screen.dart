@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/biometric_provider.dart';
 import '../../providers/schedule_provider.dart';
+import '../../services/ios_features_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/ios_widgets.dart';
 import '../auth/login_screen.dart';
 import '../settings/break_reminder_settings_screen.dart';
 import '../settings/profile_edit_screen.dart';
@@ -15,8 +19,7 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final themeMode = ref.watch(themeProvider);
     final userProfile = ref.watch(userProfileProvider);
     final activeSchedule = ref.watch(activeScheduleProvider).valueOrNull;
@@ -24,7 +27,6 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // ── Large Profile Header ──────────────────────────────────────
           SliverToBoxAdapter(
             child: _ProfileHeader(
               userProfile: userProfile,
@@ -32,10 +34,9 @@ class ProfileScreen extends ConsumerWidget {
             ).animate().fadeIn(duration: 400.ms),
           ),
 
-          // ── Schedule info ─────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
               child: _ScheduleBanner(
                 schedule: activeSchedule,
                 isDark: isDark,
@@ -48,34 +49,34 @@ class ProfileScreen extends ConsumerWidget {
                   ref.invalidate(activeScheduleProvider);
                 }),
               ),
-            ).animate().fadeIn(delay: 80.ms, duration: 400.ms),
+            ).animate().fadeIn(delay: 80.ms),
           ),
 
-          SliverToBoxAdapter(child: const SizedBox(height: 20)),
-
-          // ── Settings sections ─────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
+                  const SizedBox(height: 20),
+
+                  // Account section
                   _SettingsSection(
                     title: 'Account',
                     isDark: isDark,
-                    items: [
-                      _SettingItem(
-                        icon: Icons.person_rounded,
+                    children: [
+                      IOSListRow(
+                        leadingIcon: Icons.person_rounded,
                         iconColor: AppColors.accent,
                         title: 'Edit Profile',
-                        subtitle: 'Name, Employee ID',
+                        subtitle: userProfile.valueOrNull?.fullName ?? '',
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
                               builder: (_) => const ProfileEditScreen()),
                         ).then((_) => ref.invalidate(userProfileProvider)),
                       ),
-                      _SettingItem(
-                        icon: Icons.schedule_rounded,
+                      IOSListRow(
+                        leadingIcon: Icons.schedule_rounded,
                         iconColor: AppColors.success,
                         title: 'Work Schedules',
                         subtitle: activeSchedule?.displayTime ??
@@ -93,15 +94,21 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
 
+                  // Security section (Face ID / Touch ID)
+                  if (!kIsWeb)
+                    _SecuritySection(isDark: isDark),
+                  if (!kIsWeb) const SizedBox(height: 14),
+
+                  // Notifications
                   _SettingsSection(
                     title: 'Notifications',
                     isDark: isDark,
-                    items: [
-                      _SettingItem(
-                        icon: Icons.notifications_active_rounded,
+                    children: [
+                      IOSListRow(
+                        leadingIcon: Icons.notifications_active_rounded,
                         iconColor: AppColors.warning,
                         title: 'Break Reminders',
-                        subtitle: 'Configure return reminders',
+                        subtitle: 'Configure return reminders while on break',
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -113,38 +120,89 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
 
+                  // Appearance
                   _SettingsSection(
                     title: 'Appearance',
                     isDark: isDark,
-                    items: [
-                      _ThemeSelector(themeMode: themeMode, isDark: isDark),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: AppColors.accent
+                                    .withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.palette_rounded,
+                                  color: AppColors.accent, size: 17),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text('Theme',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall),
+                            ),
+                            IOSSegmentedControl<ThemeMode>(
+                              selectedValue: themeMode,
+                              options: const {
+                                ThemeMode.light: '☀️ Light',
+                                ThemeMode.dark: '🌙 Dark',
+                                ThemeMode.system: 'Auto',
+                              },
+                              onChanged: (m) =>
+                                  ref.read(themeProvider.notifier).setTheme(m),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
 
+                  // Share & Rate
                   _SettingsSection(
-                    title: 'About',
+                    title: 'Share & Rate',
                     isDark: isDark,
-                    items: [
-                      _SettingItem(
-                        icon: Icons.info_outline_rounded,
-                        iconColor: isDark
-                            ? AppColors.label3Dark
-                            : AppColors.label3Light,
-                        title: 'App Version',
-                        subtitle: '1.0.0',
-                        onTap: null,
+                    children: [
+                      IOSListRow(
+                        leadingIcon: Icons.share_rounded,
+                        iconColor: AppColors.accent,
+                        title: 'Share ODC Tracker AI',
+                        subtitle: 'Tell your team about this app',
+                        onTap: () => IOSFeaturesService.shareText(
+                          'Check out ODC Tracker AI — a premium time tracking app for ODC employees. Download it now!',
+                          subject: 'ODC Tracker AI',
+                        ),
+                      ),
+                      IOSListRow(
+                        leadingIcon: Icons.star_rounded,
+                        iconColor: AppColors.warning,
+                        title: 'Rate on App Store',
+                        subtitle: 'Leave a review',
+                        onTap: () =>
+                            IOSFeaturesService().requestReview(),
+                        showDivider: false,
                       ),
                     ],
                   ),
+                  const SizedBox(height: 14),
+
+                  // About
+                  _AboutSection(isDark: isDark),
                   const SizedBox(height: 20),
 
                   // Sign out
                   _SignOutButton(isDark: isDark),
                   const SizedBox(height: 40),
                 ],
-              ),
-            ).animate().fadeIn(delay: 150.ms, duration: 400.ms),
+              ).animate().fadeIn(delay: 150.ms),
+            ),
           ),
         ],
       ),
@@ -167,20 +225,15 @@ class _ProfileHeader extends StatelessWidget {
       loading: () => null,
       error: (_, __) => null,
     );
-
     final name = user?.fullName ?? '';
     final mobile = user?.mobileNumber ?? '';
     final employeeId = user?.employeeId;
     final initials = name.isNotEmpty
-        ? name
-            .split(' ')
-            .take(2)
-            .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
-            .join()
+        ? name.split(' ').take(2).map((w) => w.isNotEmpty ? w[0].toUpperCase() : '').join()
         : '?';
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 60, 24, 28),
+      padding: const EdgeInsets.fromLTRB(24, 56, 24, 28),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -193,47 +246,54 @@ class _ProfileHeader extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Avatar
-          Container(
-            width: 88,
-            height: 88,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.accent, AppColors.accentDark],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          Hero(
+            tag: 'profile_avatar',
+            child: Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.accent, AppColors.accentDark],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+                boxShadow: AppShadows.elevated(AppColors.accent),
               ),
-              shape: BoxShape.circle,
-              boxShadow: AppShadows.elevated(AppColors.accent),
-            ),
-            child: Center(
-              child: Text(
-                initials,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
+              child: Center(
+                child: Text(
+                  initials,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
           ),
           const SizedBox(height: 16),
           Text(
-            name.isNotEmpty ? name : 'Loading...',
+            name.isNotEmpty ? name : 'Loading…',
             style: theme.textTheme.headlineMedium,
           ),
           const SizedBox(height: 4),
           if (mobile.isNotEmpty)
-            Text(mobile, style: theme.textTheme.bodyMedium?.copyWith(
-              color: isDark ? AppColors.label3Dark : AppColors.label3Light,
-            )),
+            Text(
+              mobile,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: isDark ? AppColors.label3Dark : AppColors.label3Light,
+              ),
+            ),
           if (employeeId != null && employeeId.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: AppColors.accent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: AppColors.accent.withValues(alpha: 0.2)),
               ),
               child: Text(
                 'ID: $employeeId',
@@ -265,25 +325,21 @@ class _ScheduleBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final displayTime = schedule?.displayTime ?? '1 PM – 10 PM';
-    final name = schedule?.name ?? 'Default Schedule';
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.success.withValues(alpha: isDark ? 0.12 : 0.08),
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(
-            color: AppColors.success.withValues(alpha: 0.2),
-          ),
+              color: AppColors.success.withValues(alpha: 0.2)),
         ),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 color: AppColors.success.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
@@ -291,22 +347,27 @@ class _ScheduleBanner extends StatelessWidget {
               child: const Icon(Icons.schedule_rounded,
                   color: AppColors.success, size: 20),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: AppColors.success,
-                        fontWeight: FontWeight.w700,
-                      )),
-                  Text(displayTime, style: theme.textTheme.bodyMedium),
+                  Text(
+                    schedule?.name ?? 'Schedule A',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    schedule?.displayTime ?? '1 PM – 10 PM',
+                    style: theme.textTheme.bodyMedium,
+                  ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded,
-                color: isDark ? AppColors.label3Dark : AppColors.label3Light),
+            const Icon(Icons.chevron_right_rounded,
+                color: AppColors.success, size: 18),
           ],
         ),
       ),
@@ -314,15 +375,61 @@ class _ScheduleBanner extends StatelessWidget {
   }
 }
 
+// ─── Security Section ─────────────────────────────────────────────────────────
+class _SecuritySection extends ConsumerWidget {
+  final bool isDark;
+  const _SecuritySection({required this.isDark});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final biometricType = ref.watch(biometricTypeProvider).valueOrNull ?? 'none';
+    final appLockEnabled = ref.watch(appLockEnabledProvider);
+
+    if (biometricType == 'none') return const SizedBox.shrink();
+
+    final icon = biometricType == 'faceID'
+        ? Icons.face_rounded
+        : Icons.fingerprint_rounded;
+    final label = biometricType == 'faceID' ? 'Face ID' : 'Touch ID';
+
+    return _SettingsSection(
+      title: 'Security',
+      isDark: isDark,
+      children: [
+        IOSToggleRow(
+          icon: icon,
+          iconColor: AppColors.accent,
+          title: '$label App Lock',
+          subtitle: 'Require $label to open the app',
+          value: appLockEnabled,
+          onChanged: (v) async {
+            if (v) {
+              // Verify biometrics before enabling
+              final auth = await IOSFeaturesService().authenticate(
+                reason: 'Enable $label to protect ODC Tracker AI',
+              );
+              if (auth) {
+                ref.read(appLockEnabledProvider.notifier).setEnabled(true);
+              }
+            } else {
+              ref.read(appLockEnabledProvider.notifier).setEnabled(false);
+            }
+          },
+        ),
+      ],
+    );
+  }
+}
+
 // ─── Settings Section ─────────────────────────────────────────────────────────
 class _SettingsSection extends StatelessWidget {
   final String title;
-  final List<Widget> items;
+  final List<Widget> children;
   final bool isDark;
 
   const _SettingsSection({
     required this.title,
-    required this.items,
+    required this.children,
     required this.isDark,
   });
 
@@ -333,12 +440,12 @@ class _SettingsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 2, bottom: 8),
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
             title.toUpperCase(),
             style: theme.textTheme.labelSmall?.copyWith(
-              color: AppColors.accent,
-              fontWeight: FontWeight.w700,
+              color: isDark ? AppColors.label3Dark : AppColors.label3Light,
+              fontWeight: FontWeight.w600,
               letterSpacing: 0.8,
             ),
           ),
@@ -349,209 +456,47 @@ class _SettingsSection extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
           clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: List.generate(items.length, (i) {
-              return Column(
-                children: [
-                  items[i],
-                  if (i < items.length - 1)
-                    Divider(
-                      height: 1,
-                      indent: 56,
-                      color: isDark
-                          ? AppColors.separatorDark
-                          : AppColors.separatorLight,
-                    ),
-                ],
-              );
-            }),
-          ),
+          child: Column(children: children),
         ),
       ],
     );
   }
 }
 
-// ─── Setting Item ─────────────────────────────────────────────────────────────
-class _SettingItem extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final VoidCallback? onTap;
-
-  const _SettingItem({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Icon(icon, size: 18, color: iconColor),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: theme.textTheme.titleSmall),
-                  if (subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 1),
-                    Text(subtitle, style: theme.textTheme.bodySmall),
-                  ],
-                ],
-              ),
-            ),
-            if (onTap != null)
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Theme Selector ───────────────────────────────────────────────────────────
-class _ThemeSelector extends ConsumerWidget {
-  final ThemeMode themeMode;
+// ─── About Section ────────────────────────────────────────────────────────────
+class _AboutSection extends ConsumerWidget {
   final bool isDark;
-
-  const _ThemeSelector({required this.themeMode, required this.isDark});
+  const _AboutSection({required this.isDark});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: const Icon(Icons.palette_rounded,
-                size: 18, color: AppColors.accent),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text('Appearance', style: theme.textTheme.titleSmall),
-          ),
-          // Segmented control
-          Container(
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surface2Dark : AppColors.surface2Light,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            padding: const EdgeInsets.all(3),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _ThemeOption(
-                  icon: Icons.light_mode_rounded,
-                  label: 'Light',
-                  mode: ThemeMode.light,
-                  current: themeMode,
-                  isDark: isDark,
-                ),
-                _ThemeOption(
-                  icon: Icons.dark_mode_rounded,
-                  label: 'Dark',
-                  mode: ThemeMode.dark,
-                  current: themeMode,
-                  isDark: isDark,
-                ),
-                _ThemeOption(
-                  icon: Icons.auto_awesome_rounded,
-                  label: 'Auto',
-                  mode: ThemeMode.system,
-                  current: themeMode,
-                  isDark: isDark,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ThemeOption extends ConsumerWidget {
-  final IconData icon;
-  final String label;
-  final ThemeMode mode;
-  final ThemeMode current;
-  final bool isDark;
-
-  const _ThemeOption({
-    required this.icon,
-    required this.label,
-    required this.mode,
-    required this.current,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selected = current == mode;
-    return GestureDetector(
-      onTap: () => ref.read(themeProvider.notifier).setTheme(mode),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected
-              ? (isDark ? AppColors.surfaceDark : AppColors.surfaceLight)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+    return _SettingsSection(
+      title: 'About',
+      isDark: isDark,
+      children: [
+        IOSListRow(
+          leadingIcon: Icons.info_outline_rounded,
+          iconColor: isDark ? AppColors.label3Dark : AppColors.label3Light,
+          title: 'App Version',
+          subtitle: '1.2.0 (Build 12)',
+          onTap: null,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon,
-                size: 14,
-                color: selected
-                    ? AppColors.accent
-                    : (isDark ? AppColors.label3Dark : AppColors.label3Light)),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                color: selected
-                    ? AppColors.accent
-                    : (isDark ? AppColors.label3Dark : AppColors.label3Light),
-              ),
-            ),
-          ],
+        IOSListRow(
+          leadingIcon: Icons.shield_outlined,
+          iconColor: isDark ? AppColors.label3Dark : AppColors.label3Light,
+          title: 'Privacy Policy',
+          onTap: () => IOSFeaturesService.openUrl(
+              'https://odctracker.app/privacy'),
         ),
-      ),
+        IOSListRow(
+          leadingIcon: Icons.description_outlined,
+          iconColor: isDark ? AppColors.label3Dark : AppColors.label3Light,
+          title: 'Terms of Service',
+          onTap: () => IOSFeaturesService.openUrl(
+              'https://odctracker.app/terms'),
+          showDivider: false,
+        ),
+      ],
     );
   }
 }
@@ -563,25 +508,23 @@ class _SignOutButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return GestureDetector(
+    return IOSListRow(
+      leadingIcon: Icons.logout_rounded,
+      iconColor: AppColors.danger,
+      title: 'Sign Out',
+      isDestructive: true,
+      showDivider: false,
       onTap: () async {
-        final confirm = await showDialog<bool>(
+        final confirm = await showIOSAlert(
           context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Sign Out'),
-            content: const Text('Are you sure you want to sign out?'),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel')),
-              TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: Text('Sign Out',
-                      style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600))),
-            ],
-          ),
+          title: 'Sign Out',
+          message: 'Are you sure you want to sign out?',
+          confirmText: 'Sign Out',
+          cancelText: 'Cancel',
+          isDestructive: true,
         );
         if (confirm == true && context.mounted) {
+          await IOSFeaturesService.warningFeedback();
           await ref.read(authProvider.notifier).signOut();
           if (context.mounted) {
             Navigator.pushAndRemoveUntil(
@@ -592,29 +535,6 @@ class _SignOutButton extends ConsumerWidget {
           }
         }
       },
-      child: Container(
-        height: 52,
-        decoration: BoxDecoration(
-          color: AppColors.danger.withValues(alpha: isDark ? 0.15 : 0.08),
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: AppColors.danger.withValues(alpha: 0.2)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.logout_rounded, color: AppColors.danger, size: 20),
-            const SizedBox(width: 10),
-            Text(
-              'Sign Out',
-              style: TextStyle(
-                color: AppColors.danger,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

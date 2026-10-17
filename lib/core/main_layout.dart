@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/biometric_provider.dart';
+import '../screens/auth/app_lock_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/calendar/calendar_screen.dart';
 import '../screens/reports/reports_screen.dart';
@@ -7,17 +10,17 @@ import '../screens/tasks/tasks_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../theme/app_theme.dart';
 
-class MainLayout extends StatefulWidget {
+class MainLayout extends ConsumerStatefulWidget {
   const MainLayout({super.key});
 
   @override
-  State<MainLayout> createState() => _MainLayoutState();
+  ConsumerState<MainLayout> createState() => _MainLayoutState();
 }
 
-class _MainLayoutState extends State<MainLayout>
-    with SingleTickerProviderStateMixin {
+class _MainLayoutState extends ConsumerState<MainLayout>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
-  late AnimationController _navController;
+  DateTime? _backgroundedAt;
 
   final List<Widget> _screens = const [
     HomeScreen(),
@@ -58,16 +61,34 @@ class _MainLayoutState extends State<MainLayout>
   @override
   void initState() {
     super.initState();
-    _navController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
-    _navController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final lockEnabled = ref.read(appLockEnabledProvider);
+    if (!lockEnabled) return;
+
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _backgroundedAt = DateTime.now();
+    } else if (state == AppLifecycleState.resumed) {
+      final backgrounded = _backgroundedAt;
+      if (backgrounded != null) {
+        final elapsed = DateTime.now().difference(backgrounded).inSeconds;
+        // Lock after 60 seconds in background
+        if (elapsed > 60) {
+          ref.read(sessionUnlockedProvider.notifier).state = false;
+        }
+      }
+      _backgroundedAt = null;
+    }
   }
 
   void _onTabSelected(int index) {
@@ -81,22 +102,24 @@ class _MainLayoutState extends State<MainLayout>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: _PremiumNavBar(
-        currentIndex: _currentIndex,
-        items: _navItems,
-        isDark: isDark,
-        onTap: _onTabSelected,
+    return AppLockScreen(
+      child: Scaffold(
+        body: IndexedStack(
+          index: _currentIndex,
+          children: _screens,
+        ),
+        bottomNavigationBar: _PremiumNavBar(
+          currentIndex: _currentIndex,
+          items: _navItems,
+          isDark: isDark,
+          onTap: _onTabSelected,
+        ),
       ),
     );
   }
 }
 
-// ─── Premium Nav Bar ──────────────────────────────────────────────────────────
+// ─── Premium iOS-style Nav Bar ────────────────────────────────────────────────
 class _PremiumNavBar extends StatelessWidget {
   final int currentIndex;
   final List<_NavItem> items;
@@ -114,10 +137,14 @@ class _PremiumNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        color: isDark
+            ? AppColors.surfaceDark.withValues(alpha: 0.95)
+            : AppColors.surfaceLight.withValues(alpha: 0.95),
         border: Border(
           top: BorderSide(
-            color: isDark ? AppColors.separatorDark : AppColors.separatorLight,
+            color: isDark
+                ? AppColors.separatorDark
+                : AppColors.separatorLight,
             width: 0.5,
           ),
         ),
@@ -128,11 +155,10 @@ class _PremiumNavBar extends StatelessWidget {
           height: 60,
           child: Row(
             children: List.generate(items.length, (i) {
-              final item = items[i];
               final selected = currentIndex == i;
               return Expanded(
                 child: _NavButton(
-                  item: item,
+                  item: items[i],
                   selected: selected,
                   isDark: isDark,
                   onTap: () => onTap(i),
@@ -165,24 +191,21 @@ class _NavButton extends StatefulWidget {
 
 class _NavButtonState extends State<_NavButton>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+  late AnimationController _ctrl;
   late Animation<double> _scaleAnim;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.88).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 120));
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.85)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
@@ -190,15 +213,17 @@ class _NavButtonState extends State<_NavButton>
   Widget build(BuildContext context) {
     final color = widget.selected
         ? AppColors.accent
-        : (widget.isDark ? AppColors.label3Dark : AppColors.label3Light);
+        : (widget.isDark
+            ? AppColors.label3Dark
+            : AppColors.label3Light);
 
     return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
+      onTapDown: (_) => _ctrl.forward(),
       onTapUp: (_) {
-        _controller.reverse();
+        _ctrl.reverse();
         widget.onTap();
       },
-      onTapCancel: () => _controller.reverse(),
+      onTapCancel: () => _ctrl.reverse(),
       behavior: HitTestBehavior.opaque,
       child: AnimatedBuilder(
         animation: _scaleAnim,
@@ -210,7 +235,7 @@ class _NavButtonState extends State<_NavButton>
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: widget.selected ? 44 : 36,
-              height: widget.selected ? 32 : 28,
+              height: widget.selected ? 30 : 26,
               decoration: BoxDecoration(
                 color: widget.selected
                     ? AppColors.accent.withValues(alpha: 0.12)
@@ -218,7 +243,9 @@ class _NavButtonState extends State<_NavButton>
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                widget.selected ? widget.item.activeIcon : widget.item.icon,
+                widget.selected
+                    ? widget.item.activeIcon
+                    : widget.item.icon,
                 color: color,
                 size: 22,
               ),
@@ -228,8 +255,9 @@ class _NavButtonState extends State<_NavButton>
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
                 fontSize: 10,
-                fontWeight:
-                    widget.selected ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: widget.selected
+                    ? FontWeight.w600
+                    : FontWeight.w400,
                 color: color,
               ),
               child: Text(widget.item.label),

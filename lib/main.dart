@@ -8,6 +8,7 @@ import 'database/hive_service.dart';
 import 'notifications/notification_service.dart';
 import 'providers/theme_provider.dart';
 import 'services/firestore_service.dart';
+import 'services/native_channel_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 
@@ -15,29 +16,44 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (!kIsWeb) {
-    // Hive uses path_provider — not available on web
+    // 1. Hive (mobile only — uses path_provider)
     await HiveService.init();
 
-    // flutter_local_notifications is mobile-only
+    // 2. Notifications (mobile only)
     await NotificationService().init();
-  }
 
-  // Firebase works on web and mobile
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+    // 3. Lock to portrait on phones (allow landscape on tablets)
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
 
-  if (!kIsWeb) {
-    // Firestore offline persistence — web handles this via IndexedDB automatically
-    await FirestoreService().enableOfflinePersistence();
-
-    // Status-bar tint — mobile only
+    // 4. Status bar
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
     );
+  }
+
+  // 5. Firebase (web + mobile)
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // 6. Firestore offline persistence (mobile only — web uses IndexedDB automatically)
+  if (!kIsWeb) {
+    await FirestoreService().enableOfflinePersistence();
+  }
+
+  // 7. Deep link listener for iOS Siri Shortcuts / URL scheme
+  if (!kIsWeb) {
+    NativeChannelService().listenForDeepLinks((url) {
+      debugPrint('Deep link received: $url');
+      // TODO: handle odctracker://checkin, odctracker://checkout, etc.
+    });
   }
 
   runApp(const ProviderScope(child: ODCTrackerApp()));
@@ -48,8 +64,6 @@ class ODCTrackerApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // themeProvider reads Hive; on web Hive isn't init'd so it safely falls
-    // back to ThemeMode.system via the try/catch inside ThemeNotifier.
     final themeMode = ref.watch(themeProvider);
     return MaterialApp(
       title: 'ODC Tracker AI',
@@ -57,6 +71,18 @@ class ODCTrackerApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
+      // iOS-style page transitions
+      builder: (context, child) {
+        return MediaQuery(
+          // Respect user's text size preference (iOS Dynamic Type)
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(
+              MediaQuery.of(context).textScaler.scale(1.0).clamp(0.8, 1.4),
+            ),
+          ),
+          child: child!,
+        );
+      },
       home: const SplashScreen(),
     );
   }
