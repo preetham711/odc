@@ -1,0 +1,73 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Firebase configuration files (contains sensitive API keys)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
+
+# Keep only example files
+!android/app/google-services.json.example
+!ios/Runner/GoogleService-Info.plist.example
+!lib/firebase_options.dart.example
+
+# ── Added by build setup ──────────────────────────────────────────────────
+
+# iOS Firebase config — contains sensitive API keys (do NOT commit)
+# Add ios/Runner/GoogleService-Info.plist to your repo only on the Mac,
+# after downloading it from Firebase Console.
+ios/Runner/GoogleService-Info.plist
+
+# Keep the example template in git
+!ios/Runner/GoogleService-Info.plist.example
+
+# Android release keystore — NEVER commit this to git
+android/app/*.jks
+android/app/*.keystore
+
+# Release output files (large binaries — regenerate via build scripts)
+releases/android/*.apk
+releases/ios/*.ipa
