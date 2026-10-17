@@ -9,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/reminder_provider.dart';
 import '../../providers/schedule_provider.dart';
 import '../../services/ios_features_service.dart';
+import '../../services/schedule_validator_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/ios_widgets.dart';
@@ -457,6 +458,18 @@ class _ActionControlState extends ConsumerState<_ActionControl>
 
   Future<void> _act(String action) async {
     if (_isLoading) return;
+    
+    // Validate schedule BEFORE any action
+    final schedule = ref.read(activeScheduleProvider).valueOrNull;
+    final validator = ScheduleValidatorService();
+    final scheduleError = validator.validateCurrentTime(schedule);
+    
+    if (scheduleError != null && (action == 'checkIn' || action == 'startBreak' || action == 'endBreak')) {
+      await IOSFeaturesService.errorFeedback();
+      _showSnack(scheduleError, AppColors.danger);
+      return;
+    }
+    
     setState(() => _isLoading = true);
 
     // Advanced Apple Taptic Engine patterns
@@ -478,7 +491,6 @@ class _ActionControlState extends ConsumerState<_ActionControl>
     try {
       final svc = ref.read(firestoreServiceProvider);
       final notifSvc = NotificationService();
-      final schedule = ref.read(activeScheduleProvider).valueOrNull;
       switch (action) {
         case 'checkIn':
           await svc.checkIn(widget.userId, schedule: schedule);

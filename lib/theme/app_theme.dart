@@ -33,6 +33,19 @@ class AppColors {
   static const Color label3Dark = Color(0xFF98989F);
   static const Color separatorDark = Color(0xFF38383A);
 
+  // Admin colors
+  static const Color adminOrange = Color(0xFFFF6B35);
+  
+  // Additional semantic colors
+  static const Color error = danger;
+  static const Color background = bgLight;
+  static const Color border = Color(0xFFE5E5EA);
+  
+  // Text colors (context-aware)
+  static const Color textPrimary = labelLight;
+  static const Color textSecondary = label2Light;
+  static const Color textTertiary = label3Light;
+
   // Keep legacy names for backward compat with old screens
   static const Color primaryBlue = accent;
   static const Color successGreen = success;
@@ -40,6 +53,50 @@ class AppColors {
   static const Color dangerRed = danger;
   static const Color lightBackground = bgLight;
   static const Color darkBackground = bgDark;
+}
+
+// ─── Typography ───────────────────────────────────────────────────────────────
+class AppTypography {
+  static const TextStyle h1 = TextStyle(
+    fontSize: 28,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.5,
+    height: 1.15,
+  );
+  
+  static const TextStyle h2 = TextStyle(
+    fontSize: 22,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.3,
+    height: 1.2,
+  );
+  
+  static const TextStyle h3 = TextStyle(
+    fontSize: 17,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.1,
+    height: 1.3,
+  );
+  
+  static const TextStyle body = TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    height: 1.45,
+  );
+  
+  static const TextStyle bodySmall = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    height: 1.5,
+  );
+  
+  static const TextStyle caption = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.3,
+  );
 }
 
 // ─── Spacing ─────────────────────────────────────────────────────────────────

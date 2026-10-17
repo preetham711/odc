@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/biometric_provider.dart';
+import '../providers/auth_provider.dart';
 import '../screens/auth/app_lock_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/calendar/calendar_screen.dart';
 import '../screens/reports/reports_screen.dart';
 import '../screens/tasks/tasks_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import '../screens/admin/admin_layout.dart';
 import '../theme/app_theme.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
@@ -22,41 +25,62 @@ class _MainLayoutState extends ConsumerState<MainLayout>
   int _currentIndex = 0;
   DateTime? _backgroundedAt;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    CalendarScreen(),
-    ReportsScreen(),
-    TasksScreen(),
-    ProfileScreen(),
-  ];
+  List<Widget> _getScreens(bool isAdmin) {
+    final baseScreens = const [
+      HomeScreen(),
+      CalendarScreen(),
+      ReportsScreen(),
+      TasksScreen(),
+      ProfileScreen(),
+    ];
+    
+    if (isAdmin) {
+      return [...baseScreens, const AdminLayout()];
+    }
+    return baseScreens;
+  }
 
-  static const List<_NavItem> _navItems = [
-    _NavItem(
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home_rounded,
-      label: 'Today',
-    ),
-    _NavItem(
-      icon: Icons.calendar_month_outlined,
-      activeIcon: Icons.calendar_month_rounded,
-      label: 'Calendar',
-    ),
-    _NavItem(
-      icon: Icons.bar_chart_outlined,
-      activeIcon: Icons.bar_chart_rounded,
-      label: 'Reports',
-    ),
-    _NavItem(
-      icon: Icons.checklist_outlined,
-      activeIcon: Icons.checklist_rounded,
-      label: 'Tasks',
-    ),
-    _NavItem(
-      icon: Icons.person_outline_rounded,
-      activeIcon: Icons.person_rounded,
-      label: 'Profile',
-    ),
-  ];
+  List<_NavItem> _getNavItems(bool isAdmin) {
+    const baseItems = [
+      _NavItem(
+        icon: Icons.home_outlined,
+        activeIcon: Icons.home_rounded,
+        label: 'Today',
+      ),
+      _NavItem(
+        icon: Icons.calendar_month_outlined,
+        activeIcon: Icons.calendar_month_rounded,
+        label: 'Calendar',
+      ),
+      _NavItem(
+        icon: Icons.bar_chart_outlined,
+        activeIcon: Icons.bar_chart_rounded,
+        label: 'Reports',
+      ),
+      _NavItem(
+        icon: Icons.checklist_outlined,
+        activeIcon: Icons.checklist_rounded,
+        label: 'Tasks',
+      ),
+      _NavItem(
+        icon: Icons.person_outline_rounded,
+        activeIcon: Icons.person_rounded,
+        label: 'Profile',
+      ),
+    ];
+    
+    if (isAdmin) {
+      return [
+        ...baseItems,
+        const _NavItem(
+          icon: CupertinoIcons.settings,
+          activeIcon: CupertinoIcons.settings_solid,
+          label: 'Admin',
+        ),
+      ];
+    }
+    return baseItems;
+  }
 
   @override
   void initState() {
@@ -101,16 +125,21 @@ class _MainLayoutState extends ConsumerState<MainLayout>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final userProfile = ref.watch(userProfileProvider);
+    final isAdmin = userProfile.value?.isAdmin ?? false;
+    
+    final screens = _getScreens(isAdmin);
+    final navItems = _getNavItems(isAdmin);
 
     return AppLockScreen(
       child: Scaffold(
         body: IndexedStack(
           index: _currentIndex,
-          children: _screens,
+          children: screens,
         ),
         bottomNavigationBar: _PremiumNavBar(
           currentIndex: _currentIndex,
-          items: _navItems,
+          items: navItems,
           isDark: isDark,
           onTap: _onTabSelected,
         ),
