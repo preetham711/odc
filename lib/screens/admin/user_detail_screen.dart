@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../../models/user_model.dart';
 import '../../models/attendance_model.dart';
 import '../../services/admin_service.dart';
-import '../../services/firestore_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/ios_widgets.dart';
 
@@ -23,7 +22,6 @@ class UserDetailScreen extends ConsumerStatefulWidget {
 
 class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
   final _adminService = AdminService();
-  final _firestoreService = FirestoreService();
   bool _isLoading = false;
 
   Future<void> _toggleUserStatus() async {
@@ -34,7 +32,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
       context: context,
       builder: (context) => CupertinoAlertDialog(
         title: Text('${action.substring(0, 1).toUpperCase()}${action.substring(1)} User'),
-        content: Text('Are you sure you want to $action ${widget.user.name}?'),
+        content: Text('Are you sure you want to $action ${widget.user.fullName}?'),
         actions: [
           CupertinoDialogAction(
             isDestructiveAction: shouldDisable,
@@ -54,8 +52,8 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await _firestoreService.updateUser(
-        widget.user.id,
+      await _adminService.updateUser(
+        widget.user.uid,
         {'isDisabled': shouldDisable},
       );
       if (mounted) {
@@ -89,7 +87,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
       context: context,
       builder: (context) => CupertinoAlertDialog(
         title: Text('${shouldMakeAdmin ? 'Grant' : 'Revoke'} Admin Access'),
-        content: Text('Are you sure you want to $action ${widget.user.name}?'),
+        content: Text('Are you sure you want to $action ${widget.user.fullName}?'),
         actions: [
           CupertinoDialogAction(
             isDestructiveAction: !shouldMakeAdmin,
@@ -109,9 +107,9 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await _firestoreService.updateUser(
-        widget.user.id,
-        {'isAdmin': shouldMakeAdmin},
+      await _adminService.updateUser(
+        widget.user.uid,
+        {'role': shouldMakeAdmin ? 'admin' : 'user'},
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -148,7 +146,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
           child: CupertinoTextField(
             controller: controller,
             placeholder: field.substring(0, 1).toUpperCase() + field.substring(1),
-            keyboardType: field == 'phone' ? TextInputType.phone : TextInputType.text,
+            keyboardType: field == 'mobileNumber' ? TextInputType.phone : TextInputType.text,
             autofocus: true,
           ),
         ),
@@ -170,8 +168,8 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await _firestoreService.updateUser(
-        widget.user.id,
+      await _adminService.updateUser(
+        widget.user.uid,
         {field: newValue},
       );
       if (mounted) {
@@ -222,19 +220,19 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                         ? AppColors.textTertiary 
                         : AppColors.adminOrange,
                       child: Text(
-                        widget.user.name.substring(0, 1).toUpperCase(),
+                        widget.user.fullName.substring(0, 1).toUpperCase(),
                         style: AppTypography.h1.copyWith(color: Colors.white),
                       ),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      widget.user.name,
+                      widget.user.fullName,
                       style: AppTypography.h2,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      widget.user.email,
+                      widget.user.email ?? '',
                       style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -310,15 +308,15 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                     _buildInfoRow(
                       icon: CupertinoIcons.phone_fill,
                       label: 'Phone',
-                      value: widget.user.phone.isNotEmpty ? widget.user.phone : 'Not set',
-                      onTap: () => _editField('phone', widget.user.phone),
+                      value: widget.user.mobileNumber.isNotEmpty ? widget.user.mobileNumber : 'Not set',
+                      onTap: () => _editField('mobileNumber', widget.user.mobileNumber),
                     ),
                     const Divider(height: 24),
                     _buildInfoRow(
                       icon: CupertinoIcons.mail_solid,
                       label: 'Email',
-                      value: widget.user.email,
-                      onTap: () => _editField('email', widget.user.email),
+                      value: widget.user.email ?? 'Not set',
+                      onTap: () => _editField('email', widget.user.email ?? ''),
                     ),
                   ],
                 ),

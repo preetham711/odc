@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_model.dart';
+import '../models/attendance_model.dart';
 import '../services/admin_service.dart';
 import 'auth_provider.dart';
 

@@ -3,7 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../models/work_schedule.dart';
-import '../../providers/schedule_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/ios_widgets.dart';
 
@@ -21,8 +21,8 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
   late TextEditingController _nameController;
   late String _startTime;
   late String _endTime;
-  late int _breakDuration;
-  late Set<int> _workingDays;
+  late int _allowedBreakMinutes;
+  late int _requiredOdcMinutes;
   bool _isLoading = false;
 
   @override
@@ -32,8 +32,8 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
     _nameController = TextEditingController(text: schedule?.name ?? '');
     _startTime = schedule?.startTime ?? '13:00';
     _endTime = schedule?.endTime ?? '22:00';
-    _breakDuration = schedule?.breakDuration ?? 60;
-    _workingDays = schedule?.workingDays.toSet() ?? {1, 2, 3, 4, 5};
+    _allowedBreakMinutes = schedule?.allowedBreakMinutes ?? 60;
+    _requiredOdcMinutes = schedule?.requiredOdcMinutes ?? 480;
   }
 
   @override
@@ -44,29 +44,30 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_workingDays.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please select at least one working day'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
 
     setState(() => _isLoading = true);
 
     try {
+      final uid = ref.read(currentUserProvider)?.uid;
+      if (uid == null) throw Exception('User not logged in');
+
+      final now = DateTime.now();
       final schedule = WorkSchedule(
         id: widget.schedule?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        userId: uid,
         name: _nameController.text.trim(),
         startTime: _startTime,
         endTime: _endTime,
-        breakDuration: _breakDuration,
-        workingDays: _workingDays.toList()..sort(),
+        requiredOdcMinutes: _requiredOdcMinutes,
+        allowedBreakMinutes: _allowedBreakMinutes,
+        effectiveFrom: widget.schedule?.effectiveFrom,
+        effectiveUntil: widget.schedule?.effectiveUntil,
+        enabled: widget.schedule?.enabled ?? true,
+        createdAt: widget.schedule?.createdAt ?? now,
+        updatedAt: now,
       );
 
-      await ref.read(scheduleControllerProvider).save(schedule);
+      await ref.read(firestoreServiceProvider).saveSchedule(uid, schedule);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -309,13 +310,13 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
                       const SizedBox(height: 12),
                       Row(
                         children: [30, 45, 60, 90].map((duration) {
-                          final isSelected = _breakDuration == duration;
+                          final isSelected = _allowedBreakMinutes == duration;
                           return Expanded(
                             child: Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: GestureDetector(
                                 onTap: () {
-                                  setState(() => _breakDuration = duration);
+                                  setState(() => _allowedBreakMinutes = duration);
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(vertical: 12),
@@ -353,25 +354,54 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Working Days
+                // Required ODC Time
                 IOSCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Working Days', style: AppTypography.h3),
+                      Text('Required ODC Time', style: AppTypography.h3),
                       const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _buildDayChip(1, 'Mon'),
-                          _buildDayChip(2, 'Tue'),
-                          _buildDayChip(3, 'Wed'),
-                          _buildDayChip(4, 'Thu'),
-                          _buildDayChip(5, 'Fri'),
-                          _buildDayChip(6, 'Sat'),
-                          _buildDayChip(7, 'Sun'),
-                        ],
+                      Row(
+                        children: [420, 450, 480, 510].map((duration) {
+                          final isSelected = _requiredOdcMinutes == duration;
+                          final hours = duration ~/ 60;
+                          return Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() => _requiredOdcMinutes = duration);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? AppColors.adminOrange
+                                        : Colors.transparent,
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? AppColors.adminOrange
+                                          : AppColors.border,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '$hours hrs',
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppColors.textPrimary,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ],
                   ),
@@ -396,38 +426,6 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDayChip(int day, String label) {
-    final isSelected = _workingDays.contains(day);
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (isSelected) {
-            _workingDays.remove(day);
-          } else {
-            _workingDays.add(day);
-          }
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.adminOrange : Colors.transparent,
-          border: Border.all(
-            color: isSelected ? AppColors.adminOrange : AppColors.border,
-          ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.bodySmall.copyWith(
-            color: isSelected ? Colors.white : AppColors.textPrimary,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
       ),
     );
   }

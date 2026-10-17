@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:intl/intl.dart';
 import '../../models/work_schedule.dart';
 import '../../providers/schedule_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/ios_widgets.dart';
 import 'schedule_form_screen.dart';
@@ -130,10 +130,6 @@ class AdminSchedulesScreen extends ConsumerWidget {
     WidgetRef ref,
     WorkSchedule schedule,
   ) {
-    final daysText = schedule.workingDays.isEmpty
-        ? 'No days set'
-        : schedule.workingDays.map((d) => _getDayName(d)).join(', ');
-
     return IOSCard(
       onTap: () {
         Navigator.push(
@@ -173,7 +169,7 @@ class AdminSchedulesScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${_formatTime(schedule.startTime)} - ${_formatTime(schedule.endTime)}',
+                      schedule.displayTime,
                       style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -198,43 +194,32 @@ class AdminSchedulesScreen extends ConsumerWidget {
               color: AppColors.surfaceLight.withOpacity(0.5),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      CupertinoIcons.clock,
-                      size: 14,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Break: ${schedule.breakDuration} min',
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
+                Icon(
+                  CupertinoIcons.clock,
+                  size: 14,
+                  color: AppColors.textSecondary,
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(
-                      CupertinoIcons.calendar_today,
-                      size: 14,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        daysText,
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 6),
+                Text(
+                  'Break: ${schedule.allowedBreakMinutes} min',
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Icon(
+                  CupertinoIcons.clock_fill,
+                  size: 14,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Required: ${schedule.requiredOdcMinutes} min',
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -271,7 +256,11 @@ class AdminSchedulesScreen extends ConsumerWidget {
     if (confirmed != true) return;
 
     try {
-      await ref.read(scheduleControllerProvider).delete(schedule.id);
+      final uid = ref.read(currentUserProvider)?.uid;
+      if (uid == null) return;
+      
+      await ref.read(firestoreServiceProvider).deleteSchedule(uid, schedule.id);
+      
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -290,23 +279,5 @@ class AdminSchedulesScreen extends ConsumerWidget {
         );
       }
     }
-  }
-
-  String _formatTime(String time) {
-    try {
-      final parts = time.split(':');
-      final hour = int.parse(parts[0]);
-      final minute = int.parse(parts[1]);
-      final dt = DateTime(2000, 1, 1, hour, minute);
-      return DateFormat('h:mm a').format(dt);
-    } catch (e) {
-      return time;
-    }
-  }
-
-  String _getDayName(int day) {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    if (day >= 1 && day <= 7) return days[day - 1];
-    return '';
   }
 }

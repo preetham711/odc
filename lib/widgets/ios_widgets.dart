@@ -409,6 +409,82 @@ class IOSCard extends StatelessWidget {
   }
 }
 
+// ─── iOS Button ────────────────────────────────────────────────────────────────
+
+enum IOSButtonVariant {
+  primary,
+  secondary,
+  destructive,
+}
+
+class IOSButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final String text;
+  final IconData? icon;
+  final IOSButtonVariant variant;
+  final bool isLoading;
+
+  const IOSButton({
+    super.key,
+    required this.onPressed,
+    required this.text,
+    this.icon,
+    this.variant = IOSButtonVariant.primary,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color backgroundColor;
+    final Color foregroundColor;
+
+    switch (variant) {
+      case IOSButtonVariant.primary:
+        backgroundColor = AppColors.accent;
+        foregroundColor = Colors.white;
+        break;
+      case IOSButtonVariant.secondary:
+        backgroundColor = AppColors.surfaceLight;
+        foregroundColor = AppColors.accent;
+        break;
+      case IOSButtonVariant.destructive:
+        backgroundColor = AppColors.error;
+        foregroundColor = Colors.white;
+        break;
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: CupertinoButton(
+        onPressed: isLoading ? null : onPressed,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        child: isLoading
+            ? const CupertinoActivityIndicator(color: Colors.white)
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 20, color: foregroundColor),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    text,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: foregroundColor,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
 // ─── iOS Large Title App Bar ───────────────────────────────────────────────────
 
 class IOSLargeTitleBar extends StatelessWidget {

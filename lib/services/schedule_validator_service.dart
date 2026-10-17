@@ -53,13 +53,13 @@ class ScheduleValidatorService {
       final hoursUntilStart = minutesUntilStart ~/ 60;
       final remainingMinutes = minutesUntilStart % 60;
       
-      return 'Work hours start at ${schedule._fmt12h(schedule.startTime)}. '
+      return 'Work hours start at ${schedule.displayTime.split(' – ').first}. '
           'Please wait ${hoursUntilStart > 0 ? '$hoursUntilStart hour${hoursUntilStart > 1 ? 's' : ''} ' : ''}'
           '${remainingMinutes > 0 ? '$remainingMinutes minute${remainingMinutes > 1 ? 's' : ''}' : ''}.';
     }
 
     if (now.isAfter(scheduleEnd)) {
-      return 'Work hours ended at ${schedule._fmt12h(schedule.endTime)}. '
+      return 'Work hours ended at ${schedule.displayTime.split(' – ').last}. '
           'You cannot track time outside your scheduled hours.';
     }
 
