@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/main_layout.dart';
 import '../../services/admin_auth_service.dart';
 
 /// Dedicated admin login screen
@@ -45,8 +46,12 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
 
       if (!mounted) return;
 
-      // Navigate to admin dashboard
-      Navigator.of(context).pushReplacementNamed('/admin');
+      // Navigate to main layout which will show admin dashboard
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const MainLayout(),
+        ),
+      );
     } catch (e) {
       setState(() {
         _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -60,8 +65,6 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/biometric_provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/admin_auth_service.dart';
 import '../screens/auth/app_lock_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/calendar/calendar_screen.dart';
@@ -12,6 +13,35 @@ import '../screens/tasks/tasks_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/admin/admin_layout.dart';
 import '../theme/app_theme.dart';
+
+// Provider to check if current user is an admin (from either users or admins collection)
+final isAdminProvider = FutureProvider<bool>((ref) async {
+  final authState = ref.watch(authStateProvider);
+  final user = authState.value;
+  
+  if (user == null) return false;
+  
+  // Check if user is admin from admins collection
+  final adminAuthService = AdminAuthService();
+  final isAdminUser = await adminAuthService.isAdmin();
+  if (isAdminUser) {
+    debugPrint('✅ User is admin from admins collection');
+    return true;
+  }
+  
+  // Check if user has admin role in users collection
+  try {
+    final profile = await ref.read(authServiceProvider).getUserProfile(user.uid);
+    final hasAdminRole = profile.isAdmin;
+    if (hasAdminRole) {
+      debugPrint('✅ User has admin role in users collection');
+    }
+    return hasAdminRole;
+  } catch (e) {
+    debugPrint('❌ Error checking admin status: $e');
+    return false;
+  }
+});
 
 class MainLayout extends ConsumerStatefulWidget {
   const MainLayout({super.key});
@@ -125,27 +155,24 @@ class _MainLayoutState extends ConsumerState<MainLayout>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final userProfile = ref.watch(userProfileProvider);
+    final adminCheck = ref.watch(isAdminProvider);
     
     // Debug logging
-    userProfile.when(
-      data: (profile) {
-        debugPrint('=== USER PROFILE DATA ===');
-        debugPrint('User: ${profile?.fullName}');
-        debugPrint('Role: ${profile?.role}');
-        debugPrint('isAdmin: ${profile?.isAdmin}');
-        debugPrint('========================');
+    adminCheck.when(
+      data: (isAdmin) {
+        debugPrint('=== ADMIN CHECK ===');
+        debugPrint('isAdmin: $isAdmin');
+        debugPrint('==================');
       },
-      loading: () => debugPrint('User profile loading...'),
-      error: (e, s) => debugPrint('User profile error: $e'),
+      loading: () => debugPrint('Admin check loading...'),
+      error: (e, s) => debugPrint('Admin check error: $e'),
     );
     
     // Handle loading and error states
-    final isAdmin = userProfile.when(
-      data: (profile) {
-        final admin = profile?.isAdmin ?? false;
-        debugPrint('Admin check result: $admin');
-        return admin;
+    final isAdmin = adminCheck.when(
+      data: (isAdmin) {
+        debugPrint('Admin status: $isAdmin');
+        return isAdmin;
       },
       loading: () {
         debugPrint('Admin check: loading...');
