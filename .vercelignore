@@ -1,0 +1,42 @@
+# Dependencies
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+
+# Build artifacts (will be rebuilt by Vercel)
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Git
+.git/
+.gitignore
+
+# Android/iOS (not needed for web)
+android/
+ios/
+macos/
+linux/
+windows/
+
+# Tests
+test/
+coverage/
+
+# Documentation (not needed for deployment)
+docs/
+*.md
+!README.md
+
+# Misc
+.DS_Store
+*.log
+.metadata
