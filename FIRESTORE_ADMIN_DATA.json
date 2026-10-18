@@ -1,0 +1,15 @@
+{
+  "uid": "SUkOsfIA55N7KSzyfRy33ckmMZf2",
+  "fullName": "Admin User",
+  "mobileNumber": "0000011111",
+  "email": "admin@odctracker.app",
+  "role": "admin",
+  "isDisabled": false,
+  "employeeId": "ADMIN001",
+  "shiftStart": "13:00",
+  "shiftEnd": "22:00",
+  "dailyGoal": 480,
+  "breakLimit": 60,
+  "theme": "system",
+  "notificationEnabled": true
+}
