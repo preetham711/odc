@@ -127,12 +127,38 @@ class _MainLayoutState extends ConsumerState<MainLayout>
     final isDark = theme.brightness == Brightness.dark;
     final userProfile = ref.watch(userProfileProvider);
     
+    // Debug logging
+    userProfile.when(
+      data: (profile) {
+        debugPrint('=== USER PROFILE DATA ===');
+        debugPrint('User: ${profile?.fullName}');
+        debugPrint('Role: ${profile?.role}');
+        debugPrint('isAdmin: ${profile?.isAdmin}');
+        debugPrint('========================');
+      },
+      loading: () => debugPrint('User profile loading...'),
+      error: (e, s) => debugPrint('User profile error: $e'),
+    );
+    
     // Handle loading and error states
     final isAdmin = userProfile.when(
-      data: (profile) => profile?.isAdmin ?? false,
-      loading: () => false,
-      error: (_, __) => false,
+      data: (profile) {
+        final admin = profile?.isAdmin ?? false;
+        debugPrint('Admin check result: $admin');
+        return admin;
+      },
+      loading: () {
+        debugPrint('Admin check: loading...');
+        return false;
+      },
+      error: (_, __) {
+        debugPrint('Admin check: error');
+        return false;
+      },
     );
+    
+    debugPrint('Building MainLayout with isAdmin: $isAdmin');
+    debugPrint('Nav items count: ${_getNavItems(isAdmin).length}');
     
     final screens = _getScreens(isAdmin);
     final navItems = _getNavItems(isAdmin);

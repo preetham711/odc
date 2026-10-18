@@ -35,9 +35,10 @@ final userProfileProvider = StreamProvider<UserModel?>((ref) async* {
   
   try {
     final profile = await ref.read(authServiceProvider).getUserProfile(user.uid);
+    debugPrint('✅ Profile loaded: ${profile.fullName}, role: ${profile.role}, isAdmin: ${profile.isAdmin}');
     yield profile;
   } catch (e) {
-    debugPrint('Error loading user profile: $e');
+    debugPrint('❌ Error loading user profile: $e');
     yield null;
   }
 });
