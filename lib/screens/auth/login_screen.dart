@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../core/main_layout.dart';
+import '../admin/admin_login_screen.dart';
 import 'signup_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -223,6 +224,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ],
                   ).animate().fadeIn(delay: 700.ms),
+                  const SizedBox(height: 8),
+
+                  // Admin Login Link
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminLoginScreen(),
+                        ),
+                      );
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.admin_panel_settings, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Admin Login',
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ).animate().fadeIn(delay: 800.ms),
                 ],
               ),
             ),
