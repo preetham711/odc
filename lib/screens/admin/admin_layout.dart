@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_users_screen.dart';
 import 'admin_analytics_screen.dart';
+import 'audit_logs_screen.dart';
 import 'admin_settings_screen.dart';
 
 /// Root shell for the admin panel.
@@ -22,6 +23,7 @@ class _AdminLayoutState extends ConsumerState<AdminLayout> {
     AdminDashboardScreen(),
     AdminUsersScreen(),
     AdminAnalyticsScreen(),
+    AuditLogsScreen(),
     AdminSettingsScreen(),
   ];
 
@@ -29,6 +31,7 @@ class _AdminLayoutState extends ConsumerState<AdminLayout> {
     _NavItem(Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard'),
     _NavItem(Icons.group_outlined, Icons.group_rounded, 'Users'),
     _NavItem(Icons.bar_chart_outlined, Icons.bar_chart_rounded, 'Analytics'),
+    _NavItem(Icons.history_outlined, Icons.history_rounded, 'Audit Logs'),
     _NavItem(Icons.settings_outlined, Icons.settings_rounded, 'Settings'),
   ];
 

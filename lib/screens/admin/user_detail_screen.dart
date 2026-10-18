@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../models/user_model.dart';
 import '../../models/attendance_model.dart';
 import '../../services/admin_service.dart';
+import '../../services/admin_service_enhanced.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/ios_widgets.dart';
 
@@ -22,6 +23,7 @@ class UserDetailScreen extends ConsumerStatefulWidget {
 
 class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
   final _adminService = AdminService();
+  final _adminServiceEnhanced = AdminServiceEnhanced();
   bool _isLoading = false;
 
   Future<void> _toggleUserStatus() async {
@@ -71,6 +73,126 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
           SnackBar(
             content: Text('Failed to update user: $e'),
             backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _deleteUser() async {
+    // First confirmation
+    final confirmed1 = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('Delete User?'),
+        content: Text(
+          'Are you sure you want to delete ${widget.user.fullName}?\n\n'
+          'This will permanently delete:\n'
+          '• User profile\n'
+          '• All attendance records\n'
+          '• All tasks and notes\n'
+          '• All user data\n\n'
+          'This action cannot be undone.',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed1 != true) return;
+
+    // Check if widget is still mounted before showing second dialog
+    if (!mounted) return;
+
+    // Second confirmation (extra safety)
+    final TextEditingController confirmController = TextEditingController();
+    final confirmed2 = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('⚠️ Final Confirmation'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Type DELETE to confirm permanent deletion:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            CupertinoTextField(
+              controller: confirmController,
+              placeholder: 'Type DELETE',
+              textCapitalization: TextCapitalization.characters,
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () {
+              if (confirmController.text.toUpperCase() == 'DELETE') {
+                Navigator.pop(context, true);
+              } else {
+                Navigator.pop(context, false);
+              }
+            },
+            child: const Text('Delete Permanently'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed2 != true) return;
+
+    setState(() => _isLoading = true);
+    
+    try {
+      final result = await _adminServiceEnhanced.deleteUser(widget.user.uid);
+      
+      if (mounted) {
+        if (result.success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: AppColors.success,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          // Navigate back twice (to user list)
+          Navigator.pop(context);
+          Navigator.pop(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: AppColors.error,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Critical error: $e'),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -424,6 +546,75 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                       text: widget.user.isDisabled ? 'Enable User' : 'Disable User',
                       icon: widget.user.isDisabled ? CupertinoIcons.checkmark_shield : CupertinoIcons.xmark_shield,
                       variant: IOSButtonVariant.destructive,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Danger Zone
+              IOSCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          CupertinoIcons.exclamationmark_triangle_fill,
+                          color: AppColors.error,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Danger Zone',
+                          style: AppTypography.h3.copyWith(
+                            color: AppColors.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Permanent actions that cannot be undone',
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.error.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Delete User Account',
+                            style: AppTypography.body.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Permanently deletes user profile, attendance records, tasks, notes, and all associated data from Firestore.',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          IOSButton(
+                            onPressed: _deleteUser,
+                            text: 'Delete User Permanently',
+                            icon: CupertinoIcons.trash_fill,
+                            variant: IOSButtonVariant.destructive,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
