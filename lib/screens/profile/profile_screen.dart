@@ -22,7 +22,58 @@ class ProfileScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final themeMode = ref.watch(themeProvider);
     final userProfile = ref.watch(userProfileProvider);
+    
+    // Debug: Log the profile state
+    userProfile.when(
+      data: (user) => debugPrint('Profile loaded: ${user?.fullName}'),
+      loading: () => debugPrint('Profile loading...'),
+      error: (error, stack) => debugPrint('Profile error: $error'),
+    );
+    
     final activeSchedule = ref.watch(activeScheduleProvider).valueOrNull;
+
+    // Handle loading state for entire screen
+    if (userProfile.isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // Handle error state for entire screen
+    if (userProfile.hasError) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: AppColors.danger),
+                const SizedBox(height: 16),
+                Text(
+                  'Error Loading Profile',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  userProfile.error.toString(),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => ref.invalidate(userProfileProvider),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: CustomScrollView(
