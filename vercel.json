@@ -1,7 +1,6 @@
 {
-  "buildCommand": "flutter build web --release --base-href /",
+  "buildCommand": "echo 'Using pre-built Flutter web app from build/web'",
   "outputDirectory": "build/web",
-  "installCommand": "git clone https://github.com/flutter/flutter.git -b stable --depth 1 && flutter/bin/flutter config --enable-web && flutter/bin/flutter pub get",
   "rewrites": [
     {
       "source": "/(.*)",
