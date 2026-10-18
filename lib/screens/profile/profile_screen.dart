@@ -68,7 +68,11 @@ class ProfileScreen extends ConsumerWidget {
                         leadingIcon: Icons.person_rounded,
                         iconColor: AppColors.accent,
                         title: 'Edit Profile',
-                        subtitle: userProfile.valueOrNull?.fullName ?? '',
+                        subtitle: userProfile.when(
+                          data: (user) => user?.fullName ?? 'Loading...',
+                          loading: () => 'Loading...',
+                          error: (_, __) => 'Error loading profile',
+                        ),
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -220,91 +224,116 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final user = userProfile.when(
-      data: (u) => u,
-      loading: () => null,
-      error: (_, __) => null,
-    );
-    final name = user?.fullName ?? '';
-    final mobile = user?.mobileNumber ?? '';
-    final employeeId = user?.employeeId;
-    final initials = name.isNotEmpty
-        ? name.split(' ').take(2).map((w) => w.isNotEmpty ? w[0].toUpperCase() : '').join()
-        : '?';
+    
+    return userProfile.when(
+      data: (user) {
+        final name = user?.fullName ?? 'User';
+        final mobile = user?.mobileNumber ?? '';
+        final employeeId = user?.employeeId;
+        final initials = name.isNotEmpty
+            ? name.split(' ').take(2).map((w) => w.isNotEmpty ? w[0].toUpperCase() : '').join()
+            : 'U';
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 56, 24, 28),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.accent.withValues(alpha: 0.12),
-            AppColors.accent.withValues(alpha: 0.02),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Column(
-        children: [
-          Hero(
-            tag: 'profile_avatar',
-            child: Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.accent, AppColors.accentDark],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                boxShadow: AppShadows.elevated(AppColors.accent),
-              ),
-              child: Center(
-                child: Text(
-                  initials,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
+        return Container(
+          padding: const EdgeInsets.fromLTRB(24, 56, 24, 28),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.accent.withValues(alpha: 0.12),
+                AppColors.accent.withValues(alpha: 0.02),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(
+            children: [
+              Hero(
+                tag: 'profile_avatar',
+                child: Container(
+                  width: 88,
+                  height: 88,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.accent, AppColors.accentDark],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: AppShadows.elevated(AppColors.accent),
+                  ),
+                  child: Center(
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            name.isNotEmpty ? name : 'Loading…',
-            style: theme.textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 4),
-          if (mobile.isNotEmpty)
-            Text(
-              mobile,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: isDark ? AppColors.label3Dark : AppColors.label3Light,
+              const SizedBox(height: 16),
+              Text(
+                name,
+                style: theme.textTheme.headlineMedium,
               ),
-            ),
-          if (employeeId != null && employeeId.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.accent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: AppColors.accent.withValues(alpha: 0.2)),
-              ),
-              child: Text(
-                'ID: $employeeId',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: AppColors.accent,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(height: 4),
+              if (mobile.isNotEmpty)
+                Text(
+                  mobile,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: isDark ? AppColors.label3Dark : AppColors.label3Light,
+                  ),
                 ),
-              ),
+              if (employeeId != null && employeeId.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: AppColors.accent.withValues(alpha: 0.2)),
+                  ),
+                  child: Text(
+                    'ID: $employeeId',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+      loading: () => Container(
+        padding: const EdgeInsets.fromLTRB(24, 56, 24, 28),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (error, stack) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 56, 24, 28),
+        child: Column(
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: AppColors.danger),
+            const SizedBox(height: 16),
+            Text(
+              'Error loading profile',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error.toString(),
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
             ),
           ],
-        ],
+        ),
       ),
     );
   }

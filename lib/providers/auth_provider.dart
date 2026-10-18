@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../notifications/notification_service.dart';
 import '../services/auth_service.dart';
@@ -21,17 +22,23 @@ final currentUserProvider = Provider<User?>((ref) {
   return ref.watch(authServiceProvider).currentUser;
 });
 
-// User profile provider
-final userProfileProvider = FutureProvider<UserModel?>((ref) async {
-  final user = ref.watch(currentUserProvider);
+// User profile provider - watches auth state and refreshes on change
+final userProfileProvider = StreamProvider<UserModel?>((ref) async* {
+  final authState = ref.watch(authStateProvider);
   
-  if (user == null) return null;
+  final user = authState.value;
+  
+  if (user == null) {
+    yield null;
+    return;
+  }
   
   try {
     final profile = await ref.read(authServiceProvider).getUserProfile(user.uid);
-    return profile;
+    yield profile;
   } catch (e) {
-    return null;
+    debugPrint('Error loading user profile: $e');
+    yield null;
   }
 });
 

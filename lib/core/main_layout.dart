@@ -126,7 +126,13 @@ class _MainLayoutState extends ConsumerState<MainLayout>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final userProfile = ref.watch(userProfileProvider);
-    final isAdmin = userProfile.value?.isAdmin ?? false;
+    
+    // Handle loading and error states
+    final isAdmin = userProfile.when(
+      data: (profile) => profile?.isAdmin ?? false,
+      loading: () => false,
+      error: (_, __) => false,
+    );
     
     final screens = _getScreens(isAdmin);
     final navItems = _getNavItems(isAdmin);
