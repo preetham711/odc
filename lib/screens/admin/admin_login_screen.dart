@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/main_layout.dart';
 import '../../services/admin_auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Dedicated admin login screen
 /// Separate from user login for security
@@ -20,6 +22,8 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
+  bool _showSetupButton = false;
+  bool _isSettingUp = false;
 
   final _adminAuthService = AdminAuthService();
 
@@ -36,6 +40,7 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _showSetupButton = false;
     });
 
     try {
@@ -53,13 +58,149 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
         ),
       );
     } catch (e) {
+      final errorMsg = e.toString().replaceAll('Exception: ', '');
       setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _errorMessage = errorMsg;
+        // Show setup button if account not found
+        if (errorMsg.contains('not found') || errorMsg.contains('not registered')) {
+          _showSetupButton = true;
+        }
       });
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _setupAdminAccount() async {
+    setState(() {
+      _isSettingUp = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final auth = FirebaseAuth.instance;
+      final firestore = FirebaseFirestore.instance;
+
+      // Check if admin already exists
+      UserCredential userCredential;
+      String uid;
+      
+      try {
+        // Try to create new account
+        userCredential = await auth.createUserWithEmailAndPassword(
+          email: 'admin@admin.odctracker.app',
+          password: 'Admin@123456',
+        );
+        uid = userCredential.user!.uid;
+        print('✅ Created new admin auth account: $uid');
+      } catch (e) {
+        if (e.toString().contains('email-already-in-use')) {
+          // Account exists, sign in
+          userCredential = await auth.signInWithEmailAndPassword(
+            email: 'admin@admin.odctracker.app',
+            password: 'Admin@123456',
+          );
+          uid = userCredential.user!.uid;
+          print('✅ Using existing admin auth account: $uid');
+        } else {
+          throw e;
+        }
+      }
+
+      // Create/update Firestore document
+      final now = Timestamp.now();
+      final adminData = {
+        'uid': uid,
+        'username': 'admin',
+        'fullName': 'Super Admin',
+        'email': 'admin@admin.odctracker.app',
+        'phoneNumber': '+91 9999999999',
+        'permissions': ['full_access'],
+        'isActive': true,
+        'isSuperAdmin': true,
+        'createdAt': now,
+        'updatedAt': now,
+        'lastLogin': null,
+      };
+
+      await firestore.collection('admins').doc(uid).set(adminData);
+      print('✅ Admin Firestore document created');
+
+      if (!mounted) return;
+
+      // Show success and auto-login
+      setState(() {
+        _errorMessage = null;
+        _showSetupButton = false;
+        _isSettingUp = false;
+      });
+
+      // Show success dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green, size: 32),
+              SizedBox(width: 12),
+              Text('Admin Account Created!', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Admin account has been set up successfully!',
+                style: TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[800],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Username: admin', style: TextStyle(color: Colors.white, fontFamily: 'monospace')),
+                    Text('Password: Admin@123456', style: TextStyle(color: Colors.white, fontFamily: 'monospace')),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                '⚠️ Change password after login!',
+                style: TextStyle(color: Colors.orange, fontSize: 12),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Navigate to main layout
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const MainLayout()),
+                );
+              },
+              child: const Text('Continue to Dashboard'),
+            ),
+          ],
+        ),
+      );
+
+    } catch (e) {
+      print('❌ Error setting up admin: $e');
+      setState(() {
+        _errorMessage = 'Setup failed: ${e.toString()}';
+        _isSettingUp = false;
+      });
     }
   }
 
@@ -136,6 +277,50 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
                             child: Text(
                               _errorMessage!,
                               style: const TextStyle(color: Colors.red, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Setup Button (shown when admin not found)
+                  if (_showSetupButton)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Admin account not found. Click below to create it automatically.',
+                                  style: TextStyle(color: Colors.blue, fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton.icon(
+                            onPressed: _isSettingUp ? null : _setupAdminAccount,
+                            icon: _isSettingUp
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Icon(Icons.build, size: 20),
+                            label: Text(_isSettingUp ? 'Creating Admin Account...' : 'Create Admin Account'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             ),
                           ),
                         ],
