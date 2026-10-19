@@ -98,12 +98,22 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
       } catch (e) {
         if (e.toString().contains('email-already-in-use')) {
           // Account exists, sign in
-          userCredential = await auth.signInWithEmailAndPassword(
-            email: 'admin@admin.odctracker.app',
-            password: 'Admin@123456',
-          );
-          uid = userCredential.user!.uid;
-          print('✅ Using existing admin auth account: $uid');
+          try {
+            userCredential = await auth.signInWithEmailAndPassword(
+              email: 'admin@admin.odctracker.app',
+              password: 'Admin@123456',
+            );
+            uid = userCredential.user!.uid;
+            print('✅ Using existing admin auth account: $uid');
+          } catch (signInError) {
+            // Wrong password or other issue
+            setState(() {
+              _errorMessage = 'Admin account exists but password is incorrect. Please contact support or reset password.';
+              _isSettingUp = false;
+              _showSetupButton = false;
+            });
+            return;
+          }
         } else {
           throw e;
         }
@@ -197,8 +207,17 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
 
     } catch (e) {
       print('❌ Error setting up admin: $e');
+      String errorMsg = e.toString();
+      
+      // Provide helpful error messages
+      if (errorMsg.contains('permission-denied') || errorMsg.contains('PERMISSION_DENIED')) {
+        errorMsg = 'Permission denied. Please deploy Firestore rules first. See deploy_rules.md for instructions.';
+      } else if (errorMsg.contains('network')) {
+        errorMsg = 'Network error. Please check your internet connection.';
+      }
+      
       setState(() {
-        _errorMessage = 'Setup failed: ${e.toString()}';
+        _errorMessage = 'Setup failed: $errorMsg';
         _isSettingUp = false;
       });
     }

@@ -30,6 +30,9 @@ service cloud.firestore {
     
     // Admins collection - separate from users
     match /admins/{adminId} {
+      // Allow authenticated users to create their own admin document (for initial setup)
+      allow create: if isSignedIn() && isOwner(adminId);
+      
       // Admins can read their own profile
       allow read: if isOwner(adminId) || isAdminUser();
       
