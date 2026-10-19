@@ -6,6 +6,9 @@ import '../../theme/app_theme.dart';
 import '../auth/login_screen.dart';
 import 'break_reminder_settings_screen.dart';
 import 'profile_edit_screen.dart';
+import 'mood_theme_screen.dart';
+import 'permissions_screen.dart';
+import 'alarm_settings_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -92,6 +95,30 @@ class SettingsScreen extends ConsumerWidget {
 
           _buildSection(context, 'Appearance', [
             _buildThemeSelector(context, ref, themeMode),
+            _buildSettingTile(
+                context,
+                'Mood Theme',
+                'Dynamic colors based on your mood',
+                Icons.mood_rounded,
+                () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const MoodThemeScreen()),
+                    )),
+          ]),
+          const SizedBox(height: 24),
+
+          _buildSection(context, 'Permissions', [
+            _buildSettingTile(
+                context,
+                'Device Permissions',
+                'Manage app permissions',
+                Icons.security_rounded,
+                () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const PermissionsScreen()),
+                    )),
           ]),
           const SizedBox(height: 24),
 
@@ -110,6 +137,16 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           _buildSection(context, 'Notifications', [
+            _buildSettingTile(
+                context,
+                'Alarm Settings',
+                'Configure check-in/check-out alarms',
+                Icons.alarm_rounded,
+                () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const AlarmSettingsScreen()),
+                    )),
             _buildSettingTile(
                 context,
                 'Break Reminder',

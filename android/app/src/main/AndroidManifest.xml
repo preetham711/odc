@@ -19,6 +19,27 @@
     <!-- Restart reminder scheduling after device reboot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
+    <!-- Camera for attendance photos -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    
+    <!-- Storage for saving reports and exports -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    
+    <!-- Location for check-in verification -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    
+    <!-- Microphone for voice notes -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    
+    <!-- Phone state (Android only) -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+    
+    <!-- Full screen intent for alarms -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+
     <application
         android:label="odc_tracker_ai"
         android:name="${applicationName}"

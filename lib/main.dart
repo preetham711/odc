@@ -7,8 +7,10 @@ import 'firebase_options.dart';
 import 'database/hive_service.dart';
 import 'notifications/notification_service.dart';
 import 'providers/theme_provider.dart';
+import 'providers/mood_theme_provider.dart';
 import 'services/firestore_service.dart';
 import 'services/native_channel_service.dart';
+import 'services/alarm_sound_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 
@@ -25,13 +27,16 @@ void main() async {
     // 2. Notifications (mobile only)
     await NotificationService().init();
 
-    // 3. Lock to portrait on phones (allow landscape on tablets)
+    // 3. Alarm Sound Service
+    await AlarmSoundService().initialize();
+
+    // 4. Lock to portrait on phones (allow landscape on tablets)
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
 
-    // 4. Status bar
+    // 5. Status bar
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -75,12 +80,14 @@ class ODCTrackerApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeProvider);
+    final moodTheme = ref.watch(themeDataProvider);
+    
     return MaterialApp(
       title: 'ODC Tracker AI',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: themeMode,
+      theme: moodTheme, // Use dynamic mood-based theme
+      darkTheme: moodTheme,
+      themeMode: ThemeMode.dark, // Always use dark mode with mood colors
       // iOS-style page transitions
       builder: (context, child) {
         return MediaQuery(
