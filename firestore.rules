@@ -1,239 +1,139 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // HELPER FUNCTIONS
-    // ═══════════════════════════════════════════════════════════════════════════
-    
-    // Check if user is authenticated
+    // Helper Functions
     function isSignedIn() {
       return request.auth != null;
     }
     
-    // Check if user is owner of the document
     function isOwner(uid) {
       return isSignedIn() && request.auth.uid == uid;
     }
     
-    // Check if user has admin role in users collection
     function isUserAdmin() {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
-    // Check if user exists in admins collection
     function isAdminUser() {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isActive == true;
     }
     
-    // Check if user is any type of admin
     function isAnyAdmin() {
       return isUserAdmin() || isAdminUser();
     }
     
-    // Check if user is super admin
     function isSuperAdmin() {
       return isAdminUser() && 
              get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isSuperAdmin == true;
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // USERS COLLECTION - Main user profiles
-    // ═══════════════════════════════════════════════════════════════════════════
-    
+    // Users Collection
     match /users/{userId} {
-      // READ: Users can read their own data, admins can read all
       allow read: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
-      
-      // CREATE: Allow new user registration
       allow create: if isSignedIn() && isOwner(userId) && 
                        request.resource.data.uid == request.auth.uid &&
-                       request.resource.data.role == 'user' && // Default role
-                       request.resource.data.isDisabled == false; // Not disabled by default
-      
-      // UPDATE: Users can update their own data (except protected fields)
-      allow update: if isSignedIn() && isOwner(userId) && 
+                       request.resource.data.role == 'user' && 
+                       request.resource.data.isDisabled == false;
+      allow update: if (isSignedIn() && isOwner(userId) && 
                        !request.resource.data.diff(resource.data).affectedKeys()
-                         .hasAny(['uid', 'role', 'isDisabled', 'createdAt']);
+                         .hasAny(['uid', 'role', 'isDisabled', 'createdAt'])) || isAnyAdmin();
+      allow delete: if isAnyAdmin();
       
-      // ADMIN: Admins can do anything
-      allow create, update, delete: if isAnyAdmin();
-      
-      // ─────────────────────────────────────────────────────────────────────────
-      // USER SUBCOLLECTIONS
-      // ─────────────────────────────────────────────────────────────────────────
-      
-      // Attendance records
       match /attendance/{attendanceId} {
-        allow read: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
-        allow create, update: if isSignedIn() && isOwner(userId);
-        allow delete: if isAnyAdmin();
+        allow read, write: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
       }
       
-      // Work schedules
       match /workSchedules/{scheduleId} {
-        allow read: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
-        allow create, update: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
+        allow read, write: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
         allow delete: if isAnyAdmin();
       }
       
-      // Leave requests
       match /leaves/{leaveId} {
         allow read: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
         allow create: if isSignedIn() && isOwner(userId);
-        
-        // Users can cancel their own pending leaves
-        allow update: if isSignedIn() && isOwner(userId) && 
+        allow update: if (isSignedIn() && isOwner(userId) && 
                          resource.data.status == 'pending' &&
-                         request.resource.data.status == 'cancelled';
-        
-        // Admins can approve/reject
-        allow update, delete: if isAnyAdmin();
+                         request.resource.data.status == 'cancelled') || isAnyAdmin();
+        allow delete: if isAnyAdmin();
       }
       
-      // Tasks
       match /tasks/{taskId} {
         allow read, write: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
       }
       
-      // Notes
       match /notes/{noteId} {
         allow read, write: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
       }
       
-      // Notifications
       match /notifications/{notificationId} {
         allow read, write: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
       }
       
-      // Reminder history
       match /reminder_history/{reminderId} {
         allow read, write: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
       }
       
-      // Sessions (local cache)
       match /sessions/{sessionId} {
         allow read, write: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
       }
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // ADMINS COLLECTION - Separate admin accounts
-    // ═══════════════════════════════════════════════════════════════════════════
-    
+    // Admins Collection
     match /admins/{adminId} {
-      // READ: Admins can read their own profile
       allow read: if isSignedIn() && (isOwner(adminId) || isAdminUser());
-      
-      // CREATE: Allow initial admin setup OR super admin creating others
       allow create: if (isSignedIn() && isOwner(adminId)) || isSuperAdmin();
-      
-      // UPDATE: Admins can update their own profile (except protected fields)
-      allow update: if isSignedIn() && isOwner(adminId) && 
+      allow update: if (isSignedIn() && isOwner(adminId) && 
                        !request.resource.data.diff(resource.data).affectedKeys()
-                         .hasAny(['uid', 'permissions', 'isSuperAdmin', 'isActive', 'createdAt']);
-      
-      // UPDATE/DELETE: Only super admins can modify other admins
-      allow update, delete: if isSuperAdmin();
+                         .hasAny(['uid', 'permissions', 'isSuperAdmin', 'isActive', 'createdAt'])) || isSuperAdmin();
+      allow delete: if isSuperAdmin();
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // LEAVE BALANCES - Annual leave quota tracking
-    // ═══════════════════════════════════════════════════════════════════════════
-    
+    // Leave Balances
     match /leave_balances/{balanceId} {
-      // balanceId format: {userId}_{year}
-      // READ: Users can read their own balance, admins read all
       allow read: if isSignedIn() && 
                      (balanceId.matches('^' + request.auth.uid + '_.*') || isAnyAdmin());
-      
-      // CREATE/UPDATE: Users can initialize and update their own balance
-      allow create, update: if isSignedIn() && 
-                               balanceId.matches('^' + request.auth.uid + '_.*');
-      
-      // ADMIN: Full access
-      allow create, update: if isAnyAdmin();
-      
-      // DELETE: Never allow deletion
+      allow create, update: if (isSignedIn() && 
+                               balanceId.matches('^' + request.auth.uid + '_.*')) || isAnyAdmin();
       allow delete: if false;
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // MONTHLY REPORTS - Generated end-of-month summaries
-    // ═══════════════════════════════════════════════════════════════════════════
-    
+    // Monthly Reports
     match /monthly_reports/{reportId} {
-      // reportId format: {userId}_{year}_{month}
-      // READ: Users can read their own reports, admins read all
       allow read: if isSignedIn() && 
                      (reportId.matches('^' + request.auth.uid + '_.*') || isAnyAdmin());
-      
-      // CREATE/UPDATE: Only admins or system can generate reports
       allow create, update: if isAnyAdmin();
-      
-      // DELETE: Reports are immutable
       allow delete: if false;
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // ADMIN AUDIT LOGS - Track all admin actions
-    // ═══════════════════════════════════════════════════════════════════════════
-    
+    // Admin Audit Logs
     match /admin_audit_logs/{logId} {
-      // READ: Only admins can read audit logs
-      allow read: if isAnyAdmin();
-      
-      // CREATE: Admins can create logs
-      allow create: if isAnyAdmin();
-      
-      // UPDATE/DELETE: Logs are immutable
+      allow read, create: if isAnyAdmin();
       allow update, delete: if false;
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // DELETED USERS - Soft delete markers
-    // ═══════════════════════════════════════════════════════════════════════════
-    
+    // Deleted Users
     match /deleted_users/{userId} {
-      // READ: Only admins can see deleted users
-      allow read: if isAnyAdmin();
-      
-      // CREATE: Only admins can mark users as deleted
-      allow create: if isAnyAdmin();
-      
-      // UPDATE/DELETE: Deletion markers are immutable
+      allow read, create: if isAnyAdmin();
       allow update, delete: if false;
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // SETTINGS - Company/organization settings
-    // ═══════════════════════════════════════════════════════════════════════════
-    
+    // Settings
     match /settings/{document=**} {
-      // READ: All authenticated users can read settings
       allow read: if isSignedIn();
-      
-      // WRITE: Only admins can modify settings
       allow write: if isAnyAdmin();
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // REPORTS - Generic reports collection (legacy)
-    // ═══════════════════════════════════════════════════════════════════════════
-    
+    // Reports
     match /reports/{reportId} {
       allow read, write: if isAnyAdmin();
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // DEFAULT DENY - Block all other access
-    // ═══════════════════════════════════════════════════════════════════════════
-    
+    // Default Deny
     match /{document=**} {
       allow read, write: if false;
     }
