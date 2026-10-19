@@ -12,6 +12,9 @@ import 'services/native_channel_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 
+// ⚠️ ADMIN SETUP - Uncomment the line below to run admin setup, then comment it back
+// import 'setup_admin.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -47,6 +50,13 @@ void main() async {
   if (!kIsWeb) {
     await FirestoreService().enableOfflinePersistence();
   }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 🔥 ADMIN SETUP - RUN ONCE ONLY!
+  // Uncomment the line below, run the app, then comment it back out
+  // ═══════════════════════════════════════════════════════════════════
+  // await setupAdminAccount();
+  // ═══════════════════════════════════════════════════════════════════
 
   // 7. Deep link listener for iOS Siri Shortcuts / URL scheme
   if (!kIsWeb) {
