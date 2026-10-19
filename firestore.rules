@@ -54,54 +54,63 @@ service cloud.firestore {
       // Users can read their own data, admins can read all
       allow read: if isOwner(userId) || isAnyAdmin();
       
+      // Allow user creation during signup (when user creates their own account)
+      allow create: if isSignedIn() && isOwner(userId);
+      
       // Users can update their own data (except role field)
       allow update: if isOwner(userId) && 
-                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isDisabled']));
       
-      // Only admins can create users or modify roles
-      allow create: if isAnyAdmin();
-      allow update: if isAnyAdmin();
+      // Admins can create, update, and manage all users
+      allow create, update: if isAnyAdmin();
       
       // Only admins can delete users
       allow delete: if isAnyAdmin();
       
       // Subcollections for user-specific data
       match /attendance/{attendanceId} {
-        allow read, write: if isOwner(userId) || isAnyAdmin();
+        // Users can create and manage their own attendance
+        allow read, write: if isSignedIn() && isOwner(userId);
+        // Admins can read all attendance
+        allow read, write: if isAnyAdmin();
       }
       
       match /tasks/{taskId} {
-        allow read, write: if isOwner(userId) || isAnyAdmin();
+        allow read, write: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
       }
       
       match /notes/{noteId} {
-        allow read, write: if isOwner(userId) || isAnyAdmin();
+        allow read, write: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
       }
       
       match /workSchedules/{scheduleId} {
-        allow read: if isOwner(userId) || isAnyAdmin();
-        allow write: if isAnyAdmin();
+        // Users can read their own schedules
+        allow read: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
+        // Users can create their default schedule during signup
+        allow create: if isSignedIn() && isOwner(userId);
+        // Admins can manage all schedules
+        allow create, update, delete: if isAnyAdmin();
       }
       
       match /reminder_history/{reminderId} {
-        allow read, write: if isOwner(userId) || isAnyAdmin();
+        allow read, write: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
       }
       
       match /sessions/{sessionId} {
-        allow read, write: if isOwner(userId) || isAnyAdmin();
+        allow read, write: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
       }
       
       match /notifications/{notificationId} {
-        allow read, write: if isOwner(userId) || isAnyAdmin();
+        allow read, write: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
       }
       
       match /leaves/{leaveId} {
         // Users can read/create their own leave requests
-        allow read: if isOwner(userId) || isAnyAdmin();
-        allow create: if isOwner(userId);
+        allow read: if isSignedIn() && (isOwner(userId) || isAnyAdmin());
+        allow create: if isSignedIn() && isOwner(userId);
         
         // Users can update their own pending leaves (cancel)
-        allow update: if isOwner(userId) && 
+        allow update: if isSignedIn() && isOwner(userId) && 
                          resource.data.status == 'pending' &&
                          request.resource.data.status == 'cancelled';
         
@@ -150,6 +159,11 @@ service cloud.firestore {
     match /leave_balances/{balanceId} {
       allow read: if isSignedIn() && 
                      (balanceId.split('_')[0] == request.auth.uid || isAnyAdmin());
+      // Allow users to create their own balance (auto-initialization)
+      allow create: if isSignedIn() && balanceId.split('_')[0] == request.auth.uid;
+      // Allow users to update their own balance (service updates on leave apply/approve)
+      allow update: if isSignedIn() && balanceId.split('_')[0] == request.auth.uid;
+      // Admins can manage all balances
       allow create, update: if isAnyAdmin();
       allow delete: if false; // Balances should not be deleted
     }
