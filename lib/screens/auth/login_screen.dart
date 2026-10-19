@@ -69,9 +69,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
+      backgroundColor: Colors.black,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -83,22 +82,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Logo/Title
-                  Icon(
-                    Icons.access_time_rounded,
-                    size: 80,
-                    color: AppTheme.primaryBlue,
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF4F6EF7), Color(0xFF3A56D4)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: const Icon(
+                      Icons.access_time_rounded,
+                      size: 50,
+                      color: Colors.white,
+                    ),
                   ).animate().scale(duration: 400.ms),
-                  const SizedBox(height: 16),
-                  Text(
+                  const SizedBox(height: 24),
+                  const Text(
                     'ODC Tracker AI',
-                    style: theme.textTheme.displaySmall,
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
                     textAlign: TextAlign.center,
                   ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
                   const SizedBox(height: 8),
                   Text(
-                    'Track your working hours',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    'Track your working hours efficiently',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[400],
                     ),
                     textAlign: TextAlign.center,
                   ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
@@ -108,10 +125,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextFormField(
                     controller: _mobileController,
                     keyboardType: TextInputType.phone,
+                    style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Mobile Number',
-                      prefixIcon: const Icon(Icons.phone_rounded),
+                      labelStyle: TextStyle(color: Colors.grey[400]),
+                      prefixIcon: const Icon(Icons.phone_rounded, color: Color(0xFF4F6EF7)),
                       hintText: 'Enter your mobile number',
+                      hintStyle: TextStyle(color: Colors.grey[600]),
+                      filled: true,
+                      fillColor: Colors.grey[900],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[800]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF4F6EF7), width: 2),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.red),
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -129,20 +167,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
+                    style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_rounded),
+                      labelStyle: TextStyle(color: Colors.grey[400]),
+                      prefixIcon: const Icon(Icons.lock_rounded, color: Color(0xFF4F6EF7)),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
                               ? Icons.visibility_rounded
                               : Icons.visibility_off_rounded,
+                          color: Colors.grey[400],
                         ),
                         onPressed: () {
                           setState(() => _obscurePassword = !_obscurePassword);
                         },
                       ),
                       hintText: 'Enter your password',
+                      hintStyle: TextStyle(color: Colors.grey[600]),
+                      filled: true,
+                      fillColor: Colors.grey[900],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[800]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF4F6EF7), width: 2),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.red),
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -165,7 +225,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         );
                       },
-                      child: const Text('Forgot Password?'),
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          color: Color(0xFF4F6EF7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ).animate().fadeIn(delay: 500.ms),
                   const SizedBox(height: 24),
@@ -174,12 +240,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ElevatedButton(
                     onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryBlue,
+                      backgroundColor: const Color(0xFF4F6EF7),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      disabledBackgroundColor: Colors.grey[800],
+                      padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      elevation: 0,
                     ),
                     child: _isLoading
                         ? const SizedBox(
@@ -193,8 +261,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         : const Text(
                             'Login',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
                             ),
                           ),
                   ).animate().scale(duration: 400.ms, delay: 600.ms),
@@ -206,7 +275,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     children: [
                       Text(
                         'Don\'t have an account? ',
-                        style: theme.textTheme.bodyMedium,
+                        style: TextStyle(color: Colors.grey[400]),
                       ),
                       TextButton(
                         onPressed: () {
@@ -219,7 +288,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         },
                         child: const Text(
                           'Create Account',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Color(0xFF4F6EF7),
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
@@ -236,16 +308,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       );
                     },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.admin_panel_settings, size: 16),
-                        const SizedBox(width: 4),
+                        const Icon(Icons.admin_panel_settings, size: 18, color: Color(0xFF4F6EF7)),
+                        const SizedBox(width: 8),
                         Text(
                           'Admin Login',
                           style: TextStyle(
-                            color: theme.colorScheme.primary,
-                            fontSize: 14,
+                            color: Colors.grey[300],
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
