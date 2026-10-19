@@ -94,6 +94,23 @@ service cloud.firestore {
       match /notifications/{notificationId} {
         allow read, write: if isOwner(userId) || isAnyAdmin();
       }
+      
+      match /leaves/{leaveId} {
+        // Users can read/create their own leave requests
+        allow read: if isOwner(userId) || isAnyAdmin();
+        allow create: if isOwner(userId);
+        
+        // Users can update their own pending leaves (cancel)
+        allow update: if isOwner(userId) && 
+                         resource.data.status == 'pending' &&
+                         request.resource.data.status == 'cancelled';
+        
+        // Admins can update for approval/rejection
+        allow update: if isAnyAdmin();
+        
+        // Only admins can delete
+        allow delete: if isAnyAdmin();
+      }
     }
     
     // Admin audit logs - only admins can read, system writes
@@ -119,6 +136,22 @@ service cloud.firestore {
     // Reports and analytics - admin only
     match /reports/{reportId} {
       allow read, write: if isAnyAdmin();
+    }
+    
+    // Monthly reports - users can read their own, admins can read all
+    match /monthly_reports/{reportId} {
+      allow read: if isSignedIn() && 
+                     (reportId.split('_')[0] == request.auth.uid || isAnyAdmin());
+      allow create, update: if isAnyAdmin();
+      allow delete: if false; // Reports are immutable once created
+    }
+    
+    // Leave balances - users can read their own, admins can read/write all
+    match /leave_balances/{balanceId} {
+      allow read: if isSignedIn() && 
+                     (balanceId.split('_')[0] == request.auth.uid || isAnyAdmin());
+      allow create, update: if isAnyAdmin();
+      allow delete: if false; // Balances should not be deleted
     }
     
     // Block all other access
